@@ -1,7 +1,10 @@
 fastapi
 uvicorn
 pytesseract
+easyocr
+transformers
+torch
 pillow
-opencv-python
+opencv-python-headless
 python-multipart
 numpy

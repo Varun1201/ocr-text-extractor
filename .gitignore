@@ -6,3 +6,6 @@ uploads/
 *.jpg
 *.png
 *.jpeg
+credentials.json
+.cache/
+models/
