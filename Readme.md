@@ -50,7 +50,7 @@ docker run -p 8000:8000 ocr-text-extractor
 5. All results shown in tabbed interface
 
 ## Project Structure
-'''text
+```text
 ├── app.py          # FastAPI backend with all OCR engines
 ├── ocr.py          # OCR utility functions
 ├── index.html      # Frontend UI
@@ -58,4 +58,4 @@ docker run -p 8000:8000 ocr-text-extractor
 ├── Dockerfile
 └── tests/
     └── test_ocr.py
-    '''
+```
