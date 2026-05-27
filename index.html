@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OCR - Text Extractor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial;
+            background: #f0f2f5;
+            min-height: 100vh;
+            padding: 30px;
+        }
+        h1 { text-align: center; margin-bottom: 10px; color: #333; }
+        p { text-align: center; color: #666; margin-bottom: 30px; }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover { border-color: #4CAF50; }
+        .upload-area input { display: none; }
+        .upload-area label { cursor: pointer; font-size: 18px; color: #666; }
+        #preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin: 15px auto;
+            display: none;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .tabs {
+            display: none;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            border: 2px solid #ddd;
+            background: white;
+            color: #666;
+            width: auto;
+            margin-bottom: 0;
+        }
+        .tab:hover { background: white; }
+        .tab.active {
+            border-color: #FF9800;
+            color: #FF9800;
+            font-weight: bold;
+            background: white;
+        }
+        .result-box {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: none;
+            border-left: 4px solid #4CAF50;
+        }
+        .result-box h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+        .result-text {
+            font-size: 15px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: #444;
+        }
+        .best-box {
+            border-left-color: #FF9800;
+            background: #fff8f0;
+        }
+        .tesseract-box { border-left-color: #2196F3; }
+        .easyocr-box { border-left-color: #4CAF50; }
+        .trocr-box { border-left-color: #9C27B0; background: #fdf5ff; }
+        #copy-btn {
+            background: #2196F3;
+            display: none;
+            margin-top: 10px;
+        }
+        #copy-btn:hover { background: #1976D2; }
+        .loading { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>📄 OCR Text Extractor</h1>
+    <p>Upload a photo of text and get it converted to digital text</p>
+
+    <div class="container">
+
+        <!-- Upload Area -->
+        <div class="upload-area" onclick="document.getElementById('file-input').click()">
+            <label>📷 Click to upload image or take a photo</label>
+            <input type="file" id="file-input" accept="image/*" capture="environment" onchange="previewImage(event)">
+        </div>
+
+        <!-- Image Preview -->
+        <img id="preview" alt="Preview"/>
+
+        <!-- Extract Button -->
+        <button id="extract-btn" onclick="extractText()" disabled>
+            Extract Text
+        </button>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+            <button class="tab active" onclick="showTab('best', this)">✅ Best Result</button>
+            <button class="tab" onclick="showTab('trocr', this)">🤖 TrOCR</button>
+            <button class="tab" onclick="showTab('tesseract', this)">🔵 Tesseract</button>
+            <button class="tab" onclick="showTab('easyocr', this)">🟢 EasyOCR</button>
+        </div>
+
+        <!-- Best Result Box -->
+        <div class="result-box best-box" id="best-box">
+            <h3>✅ Best Result</h3>
+            <div class="result-text" id="best-text"></div>
+        </div>
+
+        <!-- TrOCR Result Box -->
+        <div class="result-box trocr-box" id="trocr-box">
+            <h3>🤖 TrOCR (Microsoft) Result</h3>
+            <div class="result-text" id="trocr-text"></div>
+        </div>
+
+        <!-- Tesseract Result Box -->
+        <div class="result-box tesseract-box" id="tesseract-box">
+            <h3>🔵 Tesseract Result</h3>
+            <div class="result-text" id="tesseract-text"></div>
+        </div>
+
+        <!-- EasyOCR Result Box -->
+        <div class="result-box easyocr-box" id="easyocr-box">
+            <h3>🟢 EasyOCR Result</h3>
+            <div class="result-text" id="easyocr-text"></div>
+        </div>
+
+        <!-- Copy Button -->
+        <button id="copy-btn" onclick="copyText()">
+            📋 Copy Text
+        </button>
+
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let currentTab = 'best';
+
+        function previewImage(event) {
+            selectedFile = event.target.files[0];
+            if (!selectedFile) return;
+
+            const preview = document.getElementById("preview");
+            preview.src = URL.createObjectURL(selectedFile);
+            preview.style.display = "block";
+            document.getElementById("extract-btn").disabled = false;
+
+            // Hide previous results
+            document.getElementById("best-box").style.display = "none";
+            document.getElementById("trocr-box").style.display = "none";
+            document.getElementById("tesseract-box").style.display = "none";
+            document.getElementById("easyocr-box").style.display = "none";
+            document.getElementById("copy-btn").style.display = "none";
+            document.getElementById("tabs").style.display = "none";
+        }
+
+        function showTab(tab, clickedBtn) {
+            currentTab = tab;
+
+            // Update tab button styles
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (clickedBtn) clickedBtn.classList.add('active');
+
+            // Show correct box, hide others
+            document.getElementById("best-box").style.display = tab === 'best' ? 'block' : 'none';
+            document.getElementById("trocr-box").style.display = tab === 'trocr' ? 'block' : 'none';
+            document.getElementById("tesseract-box").style.display = tab === 'tesseract' ? 'block' : 'none';
+            document.getElementById("easyocr-box").style.display = tab === 'easyocr' ? 'block' : 'none';
+        }
+
+        async function extractText() {
+            if (!selectedFile) return;
+
+            const btn = document.getElementById("extract-btn");
+            btn.disabled = true;
+            btn.innerText = "Extracting...";
+
+            // Show loading in best box
+            document.getElementById("best-box").style.display = "block";
+            document.getElementById("trocr-box").style.display = "none";
+            document.getElementById("tesseract-box").style.display = "none";
+            document.getElementById("easyocr-box").style.display = "none";
+            document.getElementById("tabs").style.display = "none";
+            document.getElementById("best-text").innerHTML = '<span class="loading">Processing image, please wait...</span>';
+
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/ocr", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+
+                // Fill all results
+                document.getElementById("best-text").innerText = data.text || "No text found";
+                document.getElementById("trocr-text").innerText = data.trocr || "Nothing detected";
+                document.getElementById("tesseract-text").innerText = data.tesseract || "Nothing detected";
+                document.getElementById("easyocr-text").innerText = data.easyocr || "Nothing detected";
+
+                // Show tabs and copy button
+                document.getElementById("tabs").style.display = "flex";
+                document.getElementById("copy-btn").style.display = "block";
+
+                // Reset to best tab
+                const firstTab = document.querySelector('.tab');
+                showTab('best', firstTab);
+
+            } catch (error) {
+                document.getElementById("best-text").innerText = "Error connecting to server. Make sure the API is running.";
+            }
+
+            btn.disabled = false;
+            btn.innerText = "Extract Text";
+        }
+
+        function copyText() {
+            let text = "";
+            if (currentTab === 'best') text = document.getElementById("best-text").innerText;
+            if (currentTab === 'trocr') text = document.getElementById("trocr-text").innerText;
+            if (currentTab === 'tesseract') text = document.getElementById("tesseract-text").innerText;
+            if (currentTab === 'easyocr') text = document.getElementById("easyocr-text").innerText;
+
+            navigator.clipboard.writeText(text);
+            const btn = document.getElementById("copy-btn");
+            btn.innerText = "✅ Copied!";
+            setTimeout(() => btn.innerText = "📋 Copy Text", 2000);
+        }
+    </script>
+</body>
+</html>
