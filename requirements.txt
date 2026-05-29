@@ -8,3 +8,5 @@ pillow
 opencv-python-headless
 python-multipart
 numpy
+groq
+python-dotenv

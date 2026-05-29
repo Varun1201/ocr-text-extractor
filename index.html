@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>OCR - Text Extractor</title>
+    <title>OCR + AI Text Extractor</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -39,6 +39,17 @@
             margin: 15px auto;
             display: none;
         }
+        .badge {
+            display: none;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 10px;
+            text-align: center;
+            color: white;
+        }
+        .badge.handwritten { background: #2196F3; display: block; }
+        .badge.printed { background: #4CAF50; display: block; }
         button {
             width: 100%;
             padding: 14px;
@@ -50,7 +61,7 @@
             cursor: pointer;
             margin-bottom: 20px;
         }
-        button:hover { background: #45a049; }
+        button:hover { opacity: 0.9; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         .tabs {
             display: none;
@@ -74,7 +85,6 @@
             border-color: #FF9800;
             color: #FF9800;
             font-weight: bold;
-            background: white;
         }
         .result-box {
             background: #f8f8f8;
@@ -84,54 +94,69 @@
             display: none;
             border-left: 4px solid #4CAF50;
         }
-        .result-box h3 {
-            margin-bottom: 10px;
-            font-size: 16px;
-            color: #333;
-        }
+        .result-box h3 { margin-bottom: 10px; font-size: 16px; color: #333; }
         .result-text {
             font-size: 15px;
             line-height: 1.8;
             white-space: pre-wrap;
             color: #444;
         }
-        .best-box {
-            border-left-color: #FF9800;
-            background: #fff8f0;
-        }
+        .best-box { border-left-color: #FF9800; background: #fff8f0; }
         .tesseract-box { border-left-color: #2196F3; }
         .easyocr-box { border-left-color: #4CAF50; }
         .trocr-box { border-left-color: #9C27B0; background: #fdf5ff; }
-        #copy-btn {
-            background: #2196F3;
-            display: none;
-            margin-top: 10px;
+        .ai-box { border-left-color: #F44336; background: #fff5f5; }
+        .divider {
+            border: none;
+            border-top: 2px dashed #ddd;
+            margin: 25px 0;
         }
-        #copy-btn:hover { background: #1976D2; }
+        .ai-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .ai-btn {
+            width: auto;
+            padding: 10px 16px;
+            font-size: 14px;
+            margin-bottom: 0;
+            border-radius: 8px;
+        }
+        #copy-btn { background: #2196F3; display: none; }
+        #copy-ai-btn {
+            width: auto;
+            background: #9C27B0;
+            padding: 10px 20px;
+            font-size: 14px;
+            margin-top: 15px;
+            margin-bottom: 0;
+            display: none;
+        }
         .loading { color: #666; font-style: italic; }
     </style>
 </head>
 <body>
-    <h1>📄 OCR Text Extractor</h1>
-    <p>Upload a photo of text and get it converted to digital text</p>
+    <h1>📄 OCR + AI Text Extractor</h1>
+    <p>Upload a photo of text, extract it, then process with AI</p>
 
     <div class="container">
 
-        <!-- Upload Area -->
+        <!-- Upload -->
         <div class="upload-area" onclick="document.getElementById('file-input').click()">
             <label>📷 Click to upload image or take a photo</label>
-            <input type="file" id="file-input" accept="image/*" capture="environment" onchange="previewImage(event)">
+            <input type="file" id="file-input" accept="image/*" onchange="previewImage(event)">
         </div>
 
-        <!-- Image Preview -->
         <img id="preview" alt="Preview"/>
+        <div class="badge" id="type-badge"></div>
 
-        <!-- Extract Button -->
         <button id="extract-btn" onclick="extractText()" disabled>
             Extract Text
         </button>
 
-        <!-- Tabs -->
+        <!-- OCR Tabs -->
         <div class="tabs" id="tabs">
             <button class="tab active" onclick="showTab('best', this)">✅ Best Result</button>
             <button class="tab" onclick="showTab('trocr', this)">🤖 TrOCR</button>
@@ -139,34 +164,55 @@
             <button class="tab" onclick="showTab('easyocr', this)">🟢 EasyOCR</button>
         </div>
 
-        <!-- Best Result Box -->
+        <!-- OCR Results -->
         <div class="result-box best-box" id="best-box">
             <h3>✅ Best Result</h3>
             <div class="result-text" id="best-text"></div>
         </div>
 
-        <!-- TrOCR Result Box -->
         <div class="result-box trocr-box" id="trocr-box">
-            <h3>🤖 TrOCR (Microsoft) Result</h3>
+            <h3>🤖 TrOCR Result</h3>
             <div class="result-text" id="trocr-text"></div>
         </div>
 
-        <!-- Tesseract Result Box -->
         <div class="result-box tesseract-box" id="tesseract-box">
             <h3>🔵 Tesseract Result</h3>
             <div class="result-text" id="tesseract-text"></div>
         </div>
 
-        <!-- EasyOCR Result Box -->
         <div class="result-box easyocr-box" id="easyocr-box">
             <h3>🟢 EasyOCR Result</h3>
             <div class="result-text" id="easyocr-text"></div>
         </div>
 
-        <!-- Copy Button -->
-        <button id="copy-btn" onclick="copyText()">
-            📋 Copy Text
-        </button>
+        <button id="copy-btn" onclick="copyText()">📋 Copy Text</button>
+
+        <!-- AI Section -->
+        <div id="ai-section" style="display:none;">
+            <hr class="divider">
+            <h3 style="margin-bottom:15px; color:#333;">🤖 AI Processing (Powered by Gemini)</h3>
+
+            <div class="ai-buttons">
+                <button class="ai-btn" style="background:#9C27B0;"
+                    onclick="processWithAI('summarize')">📝 Summarize</button>
+                <button class="ai-btn" style="background:#F44336;"
+                    onclick="processWithAI('fix')">✏️ Fix Grammar</button>
+                <button class="ai-btn" style="background:#2196F3;"
+                    onclick="processWithAI('explain')">💡 Explain</button>
+                <button class="ai-btn" style="background:#FF9800;"
+                    onclick="processWithAI('solve')">🔢 Solve</button>
+                <button class="ai-btn" style="background:#4CAF50;"
+                    onclick="processWithAI('bullet')">• Bullet Points</button>
+                <button class="ai-btn" style="background:#607D8B;"
+                    onclick="processWithAI('translate')">🌐 Hindi</button>
+            </div>
+
+            <div class="result-box ai-box" id="ai-result-box">
+                <h3>🤖 AI Result</h3>
+                <div class="result-text" id="ai-result-text"></div>
+                <button id="copy-ai-btn" onclick="copyAI()">📋 Copy AI Result</button>
+            </div>
+        </div>
 
     </div>
 
@@ -182,24 +228,23 @@
             preview.src = URL.createObjectURL(selectedFile);
             preview.style.display = "block";
             document.getElementById("extract-btn").disabled = false;
+            document.getElementById("type-badge").className = "badge";
+            document.getElementById("type-badge").innerText = "";
 
             // Hide previous results
-            document.getElementById("best-box").style.display = "none";
-            document.getElementById("trocr-box").style.display = "none";
-            document.getElementById("tesseract-box").style.display = "none";
-            document.getElementById("easyocr-box").style.display = "none";
+            ["best-box","trocr-box","tesseract-box","easyocr-box","ai-result-box"].forEach(id => {
+                document.getElementById(id).style.display = "none";
+            });
             document.getElementById("copy-btn").style.display = "none";
+            document.getElementById("copy-ai-btn").style.display = "none";
             document.getElementById("tabs").style.display = "none";
+            document.getElementById("ai-section").style.display = "none";
         }
 
         function showTab(tab, clickedBtn) {
             currentTab = tab;
-
-            // Update tab button styles
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             if (clickedBtn) clickedBtn.classList.add('active');
-
-            // Show correct box, hide others
             document.getElementById("best-box").style.display = tab === 'best' ? 'block' : 'none';
             document.getElementById("trocr-box").style.display = tab === 'trocr' ? 'block' : 'none';
             document.getElementById("tesseract-box").style.display = tab === 'tesseract' ? 'block' : 'none';
@@ -213,13 +258,10 @@
             btn.disabled = true;
             btn.innerText = "Extracting...";
 
-            // Show loading in best box
             document.getElementById("best-box").style.display = "block";
-            document.getElementById("trocr-box").style.display = "none";
-            document.getElementById("tesseract-box").style.display = "none";
-            document.getElementById("easyocr-box").style.display = "none";
             document.getElementById("tabs").style.display = "none";
-            document.getElementById("best-text").innerHTML = '<span class="loading">Processing image, please wait...</span>';
+            document.getElementById("best-text").innerHTML =
+                '<span class="loading">Processing image, please wait...</span>';
 
             const formData = new FormData();
             formData.append("file", selectedFile);
@@ -231,26 +273,65 @@
                 });
                 const data = await response.json();
 
-                // Fill all results
                 document.getElementById("best-text").innerText = data.text || "No text found";
                 document.getElementById("trocr-text").innerText = data.trocr || "Nothing detected";
                 document.getElementById("tesseract-text").innerText = data.tesseract || "Nothing detected";
                 document.getElementById("easyocr-text").innerText = data.easyocr || "Nothing detected";
 
-                // Show tabs and copy button
+                // Show handwritten or printed badge
+                const badge = document.getElementById("type-badge");
+                if (data.handwritten) {
+                    badge.innerText = "✍️ Handwritten detected";
+                    badge.className = "badge handwritten";
+                } else {
+                    badge.innerText = "🖨️ Printed text detected";
+                    badge.className = "badge printed";
+                }
+
                 document.getElementById("tabs").style.display = "flex";
                 document.getElementById("copy-btn").style.display = "block";
+                document.getElementById("ai-section").style.display = "block";
 
-                // Reset to best tab
-                const firstTab = document.querySelector('.tab');
-                showTab('best', firstTab);
+                showTab('best', document.querySelector('.tab'));
 
             } catch (error) {
-                document.getElementById("best-text").innerText = "Error connecting to server. Make sure the API is running.";
+                document.getElementById("best-text").innerText =
+                    "Error connecting to server. Make sure the API is running.";
             }
 
             btn.disabled = false;
             btn.innerText = "Extract Text";
+        }
+
+        async function processWithAI(mode) {
+            const text = document.getElementById(currentTab + "-text").innerText;
+            if (!text || text === "No text found" || text === "Nothing detected") {
+                alert("No text found in selected tab. Try another OCR engine!");
+                return;
+            }
+
+            const aiBox = document.getElementById("ai-result-box");
+            const aiText = document.getElementById("ai-result-text");
+
+            aiBox.style.display = "block";
+            aiText.innerText = "Processing with Gemini AI...";
+            document.getElementById("copy-ai-btn").style.display = "none";
+
+            const formData = new FormData();
+            formData.append("text", text);
+            formData.append("mode", mode);
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/ai-process", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+                aiText.innerText = data.result;
+                document.getElementById("copy-ai-btn").style.display = "block";
+            } catch (error) {
+                aiText.innerText = "Error connecting to AI. Check your API key.";
+            }
         }
 
         function copyText() {
@@ -259,11 +340,18 @@
             if (currentTab === 'trocr') text = document.getElementById("trocr-text").innerText;
             if (currentTab === 'tesseract') text = document.getElementById("tesseract-text").innerText;
             if (currentTab === 'easyocr') text = document.getElementById("easyocr-text").innerText;
-
             navigator.clipboard.writeText(text);
             const btn = document.getElementById("copy-btn");
             btn.innerText = "✅ Copied!";
             setTimeout(() => btn.innerText = "📋 Copy Text", 2000);
+        }
+
+        function copyAI() {
+            const text = document.getElementById("ai-result-text").innerText;
+            navigator.clipboard.writeText(text);
+            const btn = document.getElementById("copy-ai-btn");
+            btn.innerText = "✅ Copied!";
+            setTimeout(() => btn.innerText = "📋 Copy AI Result", 2000);
         }
     </script>
 </body>
