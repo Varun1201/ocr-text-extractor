@@ -2,144 +2,141 @@
 <html>
 <head>
     <title>OCR + AI Text Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: Arial;
-            background: #f0f2f5;
-            min-height: 100vh;
-            padding: 30px;
-        }
+        body { font-family: Arial; background: #f0f2f5; min-height: 100vh; padding: 30px; }
         h1 { text-align: center; margin-bottom: 10px; color: #333; }
-        p { text-align: center; color: #666; margin-bottom: 30px; }
+        p.subtitle { text-align: center; color: #666; margin-bottom: 30px; }
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
+            max-width: 850px; margin: 0 auto; background: white;
+            border-radius: 12px; padding: 30px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .upload-area {
-            border: 3px dashed #ccc;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            margin-bottom: 20px;
+            border: 3px dashed #ccc; border-radius: 10px; padding: 40px;
+            text-align: center; cursor: pointer; margin-bottom: 20px;
             transition: border-color 0.3s;
         }
         .upload-area:hover { border-color: #4CAF50; }
         .upload-area input { display: none; }
         .upload-area label { cursor: pointer; font-size: 18px; color: #666; }
+        .upload-hint { font-size: 12px; color: #999; margin-top: 8px; }
         #preview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            margin: 15px auto;
-            display: none;
+            max-width: 100%; max-height: 300px; border-radius: 8px;
+            margin: 15px auto; display: none;
         }
         .badge {
-            display: none;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
-            margin-bottom: 10px;
-            text-align: center;
-            color: white;
+            display: none; padding: 4px 12px; border-radius: 20px;
+            font-size: 13px; margin-bottom: 10px; text-align: center; color: white;
         }
         .badge.handwritten { background: #2196F3; display: block; }
         .badge.printed { background: #4CAF50; display: block; }
         button {
-            width: 100%;
-            padding: 14px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-            margin-bottom: 20px;
+            width: 100%; padding: 14px; background: #4CAF50; color: white;
+            border: none; border-radius: 8px; font-size: 18px;
+            cursor: pointer; margin-bottom: 20px;
         }
         button:hover { opacity: 0.9; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-        .tabs {
-            display: none;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
+        .tabs { display: none; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .tab {
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            border: 2px solid #ddd;
-            background: white;
-            color: #666;
-            width: auto;
-            margin-bottom: 0;
+            padding: 8px 16px; border-radius: 6px; cursor: pointer;
+            font-size: 14px; border: 2px solid #ddd; background: white;
+            color: #666; width: auto; margin-bottom: 0;
         }
         .tab:hover { background: white; }
-        .tab.active {
-            border-color: #FF9800;
-            color: #FF9800;
-            font-weight: bold;
-        }
+        .tab.active { border-color: #FF9800; color: #FF9800; font-weight: bold; }
         .result-box {
-            background: #f8f8f8;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            display: none;
-            border-left: 4px solid #4CAF50;
+            background: #f8f8f8; border-radius: 8px; padding: 20px;
+            margin-bottom: 15px; display: none; border-left: 4px solid #4CAF50;
         }
         .result-box h3 { margin-bottom: 10px; font-size: 16px; color: #333; }
-        .result-text {
-            font-size: 15px;
-            line-height: 1.8;
-            white-space: pre-wrap;
-            color: #444;
+        .result-text { font-size: 15px; line-height: 1.8; color: #444; }
+        .result-text p { margin-bottom: 10px; }
+        .result-text h2 { font-size: 16px; margin: 15px 0 8px 0; color: #333; }
+        .result-text h3 { font-size: 15px; margin: 12px 0 6px 0; color: #555; }
+        .result-text ul, .result-text ol { margin-left: 20px; margin-bottom: 10px; }
+        .result-text li { margin-bottom: 5px; }
+        .result-text .katex-display { margin: 10px 0; overflow-x: auto; }
+        .result-text strong { color: #333; }
+        .result-text pre {
+            background: #f0f0f0; padding: 10px; border-radius: 6px;
+            overflow-x: auto; margin: 10px 0;
         }
+        .ocr-text { font-size: 15px; line-height: 1.8; white-space: pre-wrap; color: #444; }
         .best-box { border-left-color: #FF9800; background: #fff8f0; }
         .tesseract-box { border-left-color: #2196F3; }
         .easyocr-box { border-left-color: #4CAF50; }
         .trocr-box { border-left-color: #9C27B0; background: #fdf5ff; }
+        .math-box { border-left-color: #E91E63; background: #fff0f5; }
         .ai-box { border-left-color: #F44336; background: #fff5f5; }
-        .divider {
-            border: none;
-            border-top: 2px dashed #ddd;
-            margin: 25px 0;
+        .error-box {
+            color: #F44336; padding: 12px; background: #fff5f5;
+            border-radius: 8px; border-left: 4px solid #F44336; font-size: 14px;
         }
-        .ai-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-        .ai-btn {
-            width: auto;
-            padding: 10px 16px;
-            font-size: 14px;
-            margin-bottom: 0;
-            border-radius: 8px;
-        }
+        .divider { border: none; border-top: 2px dashed #ddd; margin: 25px 0; }
+        .ai-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: center; }
+        .ai-btn { width: auto; padding: 10px 16px; font-size: 14px; margin-bottom: 0; border-radius: 8px; }
         #copy-btn { background: #2196F3; display: none; }
+        #table-btn { background: #00BCD4; display: none; }
         #copy-ai-btn {
-            width: auto;
-            background: #9C27B0;
-            padding: 10px 20px;
-            font-size: 14px;
-            margin-top: 15px;
-            margin-bottom: 0;
-            display: none;
+            width: auto; background: #9C27B0; padding: 10px 20px;
+            font-size: 14px; margin-top: 15px; margin-bottom: 0; display: none;
         }
         .loading { color: #666; font-style: italic; }
+        select {
+            padding: 10px; border-radius: 8px; border: 2px solid #607D8B;
+            font-size: 14px; color: #333; background: white; cursor: pointer;
+        }
+        /* Editable table */
+        #data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        #data-table th {
+            background: #00BCD4; color: white; border: 1px solid #ddd;
+            min-width: 80px; padding: 0;
+        }
+        #data-table th div[contenteditable] {
+            padding: 8px 12px; outline: none; min-width: 60px;
+            cursor: text; color: white;
+        }
+        #data-table th div[contenteditable]:focus { background: rgba(255,255,255,0.2); }
+        #data-table td { padding: 0; border: 1px solid #ddd; }
+        #data-table td div[contenteditable] {
+            padding: 8px 12px; outline: none; min-width: 60px; cursor: text;
+        }
+        #data-table td div[contenteditable]:focus { background: #fffde7; }
+        #data-table tr:nth-child(even) td { background: #f9f9f9; }
+        #data-table tr:hover td { background: #e0f7fa; }
+        /* Chat styles */
+        .chat-message { margin-bottom: 12px; display: flex; flex-direction: column; }
+        .chat-user {
+            background: #DCF8C6; padding: 10px 14px;
+            border-radius: 12px 12px 0 12px;
+            align-self: flex-end; max-width: 80%; font-size: 14px; color: #333;
+        }
+        .chat-assistant {
+            background: white; padding: 10px 14px;
+            border-radius: 12px 12px 12px 0;
+            align-self: flex-start; max-width: 85%;
+            font-size: 14px; color: #333; border: 1px solid #ddd; line-height: 1.6;
+        }
+        .chat-assistant p { margin-bottom: 8px; }
+        .chat-assistant h2, .chat-assistant h3 { font-size: 14px; margin: 10px 0 5px 0; color: #333; }
+        .chat-assistant .katex-display { margin: 8px 0; overflow-x: auto; }
+        .chat-label { font-size: 11px; color: #999; margin-bottom: 3px; }
+        .chat-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+        .chat-table th { background: #4CAF50; color: white; padding: 8px 12px; text-align: left; border: 1px solid #ddd; }
+        .chat-table td { padding: 8px 12px; border: 1px solid #ddd; }
+        .chat-table tr:nth-child(even) { background: #f9f9f9; }
+        .chat-chart { max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 10px 0; }
     </style>
 </head>
 <body>
     <h1>📄 OCR + AI Text Extractor</h1>
-    <p>Upload a photo of text, extract it, then process with AI</p>
+    <p class="subtitle">Upload a photo of text, extract it, then process with AI</p>
 
     <div class="container">
 
@@ -147,14 +144,13 @@
         <div class="upload-area" onclick="document.getElementById('file-input').click()">
             <label>📷 Click to upload image or take a photo</label>
             <input type="file" id="file-input" accept="image/*" onchange="previewImage(event)">
+            <div class="upload-hint">Supported: JPG, PNG, WebP • Max size: 10MB</div>
         </div>
 
         <img id="preview" alt="Preview"/>
         <div class="badge" id="type-badge"></div>
 
-        <button id="extract-btn" onclick="extractText()" disabled>
-            Extract Text
-        </button>
+        <button id="extract-btn" onclick="extractText()" disabled>Extract Text</button>
 
         <!-- OCR Tabs -->
         <div class="tabs" id="tabs">
@@ -162,55 +158,151 @@
             <button class="tab" onclick="showTab('trocr', this)">🤖 TrOCR</button>
             <button class="tab" onclick="showTab('tesseract', this)">🔵 Tesseract</button>
             <button class="tab" onclick="showTab('easyocr', this)">🟢 EasyOCR</button>
+            <button class="tab" onclick="showTab('math', this)">🔢 Math</button>
         </div>
 
         <!-- OCR Results -->
         <div class="result-box best-box" id="best-box">
             <h3>✅ Best Result</h3>
-            <div class="result-text" id="best-text"></div>
+            <div class="ocr-text" id="best-text"></div>
         </div>
-
         <div class="result-box trocr-box" id="trocr-box">
             <h3>🤖 TrOCR Result</h3>
-            <div class="result-text" id="trocr-text"></div>
+            <div class="ocr-text" id="trocr-text"></div>
         </div>
-
         <div class="result-box tesseract-box" id="tesseract-box">
             <h3>🔵 Tesseract Result</h3>
-            <div class="result-text" id="tesseract-text"></div>
+            <div class="ocr-text" id="tesseract-text"></div>
         </div>
-
         <div class="result-box easyocr-box" id="easyocr-box">
             <h3>🟢 EasyOCR Result</h3>
-            <div class="result-text" id="easyocr-text"></div>
+            <div class="ocr-text" id="easyocr-text"></div>
+        </div>
+        <div class="result-box math-box" id="math-box">
+            <h3>🔢 Math OCR Result</h3>
+            <div class="result-text" id="math-text"></div>
         </div>
 
         <button id="copy-btn" onclick="copyText()">📋 Copy Text</button>
+        <button id="table-btn" onclick="toggleTable()" style="background:#00BCD4; display:none;">
+            📊 Table Detected — View & Edit
+        </button>
 
         <!-- AI Section -->
         <div id="ai-section" style="display:none;">
             <hr class="divider">
-            <h3 style="margin-bottom:15px; color:#333;">🤖 AI Processing (Powered by Gemini)</h3>
-
+            <h3 style="margin-bottom:15px; color:#333;">🤖 AI Processing (Powered by Groq)</h3>
             <div class="ai-buttons">
-                <button class="ai-btn" style="background:#9C27B0;"
-                    onclick="processWithAI('summarize')">📝 Summarize</button>
-                <button class="ai-btn" style="background:#F44336;"
-                    onclick="processWithAI('fix')">✏️ Fix Grammar</button>
-                <button class="ai-btn" style="background:#2196F3;"
-                    onclick="processWithAI('explain')">💡 Explain</button>
-                <button class="ai-btn" style="background:#FF9800;"
-                    onclick="processWithAI('solve')">🔢 Solve</button>
-                <button class="ai-btn" style="background:#4CAF50;"
-                    onclick="processWithAI('bullet')">• Bullet Points</button>
-                <button class="ai-btn" style="background:#607D8B;"
-                    onclick="processWithAI('translate')">🌐 Hindi</button>
+                <button class="ai-btn" style="background:#9C27B0;" onclick="processWithAI('summarize')">📝 Summarize</button>
+                <button class="ai-btn" style="background:#F44336;" onclick="processWithAI('fix')">✏️ Fix Grammar</button>
+                <button class="ai-btn" style="background:#2196F3;" onclick="processWithAI('explain')">💡 Explain</button>
+                <button class="ai-btn" style="background:#FF9800;" onclick="processWithAI('solve')">🔢 Solve</button>
+                <button class="ai-btn" style="background:#4CAF50;" onclick="processWithAI('bullet')">• Bullet Points</button>
+                <button class="ai-btn" style="background:#E91E63;" onclick="processWithAI('math')">∫ Math Solver</button>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <select id="translate-lang">
+                        <option value="Hindi">Hindi</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Punjabi">Punjabi</option>
+                    </select>
+                    <button class="ai-btn" style="background:#607D8B;" onclick="processWithAI('translate')">🌐 Translate</button>
+                </div>
             </div>
-
             <div class="result-box ai-box" id="ai-result-box">
                 <h3>🤖 AI Result</h3>
                 <div class="result-text" id="ai-result-text"></div>
                 <button id="copy-ai-btn" onclick="copyAI()">📋 Copy AI Result</button>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div id="table-section" style="display:none; margin-top:20px;">
+            <hr class="divider">
+            <h3 style="margin-bottom:15px; color:#333;">📊 Table & Data Analysis</h3>
+
+            <div id="table-result">
+                <!-- Editable table toolbar -->
+                <div style="margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <span style="font-size:13px; color:#888;">
+                        ✏️ Click any cell to edit — fix OCR errors before analysis
+                    </span>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="ai-btn" style="background:#E91E63; width:auto;" onclick="addTableRow()">+ Row</button>
+                        <button class="ai-btn" style="background:#9C27B0; width:auto;" onclick="addTableCol()">+ Col</button>
+                        <button class="ai-btn" style="background:#4CAF50; width:auto;" id="confirm-btn" onclick="confirmTable()">✅ Confirm Table</button>
+                    </div>
+                </div>
+
+                <!-- Editable table -->
+                <div style="overflow-x:auto; margin-bottom:15px; border-radius:8px; border:1px solid #ddd;">
+                    <table id="data-table"></table>
+                </div>
+
+                <!-- Actions shown after confirm -->
+                <div id="table-actions" style="display:none;">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+                        <button class="ai-btn" style="background:#4CAF50; width:auto;" onclick="exportExcel()">📥 Export to Excel</button>
+                        <button class="ai-btn" style="background:#2196F3; width:auto;" onclick="showChartOptions()">📊 Generate Chart</button>
+                    </div>
+
+                    <!-- Chart options -->
+                    <div id="chart-options" style="display:none; margin-bottom:15px; background:#f8f8f8; padding:15px; border-radius:8px;">
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                            <select id="chart-type" style="padding:8px; border-radius:6px; border:2px solid #ddd;">
+                                <option value="bar">Bar Chart</option>
+                                <option value="line">Line Chart</option>
+                                <option value="pie">Pie Chart</option>
+                                <option value="scatter">Scatter Plot</option>
+                                <option value="histogram">Histogram</option>
+                            </select>
+                            <select id="x-col" style="padding:8px; border-radius:6px; border:2px solid #ddd;"></select>
+                            <select id="y-col" style="padding:8px; border-radius:6px; border:2px solid #ddd;"></select>
+                            <button class="ai-btn" style="background:#E91E63; width:auto;" onclick="generateChart()">Generate</button>
+                        </div>
+                    </div>
+
+                    <!-- Chart display -->
+                    <div id="chart-display" style="display:none; text-align:center; margin-bottom:15px;">
+                        <img id="chart-img" style="max-width:100%; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                        <br>
+                        <button class="ai-btn" style="background:#607D8B; width:auto; margin-top:10px;" onclick="downloadChart()">📥 Download Chart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div id="chat-section" style="display:none; margin-top:20px;">
+            <hr class="divider">
+            <h3 style="margin-bottom:8px; color:#333;">💬 Smart Chat</h3>
+            <p style="font-size:13px; color:#888; margin-bottom:15px;">
+                Ask anything — get text, tables, charts or math as needed
+            </p>
+            <div id="chat-messages" style="background:#f8f8f8; border-radius:8px;
+                padding:15px; min-height:200px; max-height:500px;
+                overflow-y:auto; margin-bottom:15px; border:1px solid #ddd;">
+                <div id="chat-placeholder" style="color:#999; text-align:center; margin-top:80px;">
+                    Ask anything — "show mean", "draw a bar chart", "explain step 3", "translate to Hindi"...
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="chat-input"
+                    placeholder="Ask anything about the extracted content..."
+                    style="flex:1; padding:12px; border-radius:8px;
+                    border:2px solid #ddd; font-size:15px; outline:none;"
+                    onkeypress="if(event.key==='Enter') sendChat()"/>
+                <button onclick="sendChat()" style="width:auto; padding:12px 20px; background:#4CAF50; font-size:15px; margin-bottom:0;">Send</button>
+                <button onclick="clearChat()" style="width:auto; padding:12px 20px; background:#F44336; font-size:15px; margin-bottom:0;">Clear</button>
             </div>
         </div>
 
@@ -219,10 +311,75 @@
     <script>
         let selectedFile = null;
         let currentTab = 'best';
+        const sessionId = 'session_' + Date.now();
+        let ocrText = '';
+        let aiResultText = '';
+        let tableCSV = '';
+        let tableColumns = [];
+        let tableHeaders = [];
+        let tableData = [];
+
+        // ─── RENDER HELPERS ───
+
+        function renderMathAndMarkdown(elementId, text) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = marked.parse(text);
+            renderMathInElement(el, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+        }
+
+        function renderMathOnly(elementId, text) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = text.replace(/\n/g, '<br>');
+            renderMathInElement(el, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+        }
+
+        function buildTableHTML(headers, rows, cssClass='chat-table') {
+            let html = `<div style="overflow-x:auto"><table class="${cssClass}"><thead><tr>`;
+            headers.forEach(h => { html += `<th>${h}</th>`; });
+            html += '</tr></thead><tbody>';
+            rows.forEach(row => {
+                html += '<tr>';
+                row.forEach(cell => { html += `<td>${cell}</td>`; });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        // ─── FILE HANDLING ───
 
         function previewImage(event) {
             selectedFile = event.target.files[0];
             if (!selectedFile) return;
+
+            if (selectedFile.size > 10 * 1024 * 1024) {
+                alert("File too large! Maximum size is 10MB.");
+                selectedFile = null;
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+            if (!allowedTypes.includes(selectedFile.type)) {
+                alert("Invalid file type! Please upload JPG, PNG or WebP.");
+                selectedFile = null;
+                return;
+            }
 
             const preview = document.getElementById("preview");
             preview.src = URL.createObjectURL(selectedFile);
@@ -231,14 +388,22 @@
             document.getElementById("type-badge").className = "badge";
             document.getElementById("type-badge").innerText = "";
 
-            // Hide previous results
-            ["best-box","trocr-box","tesseract-box","easyocr-box","ai-result-box"].forEach(id => {
+            ["best-box","trocr-box","tesseract-box","easyocr-box",
+             "math-box","ai-result-box"].forEach(id => {
                 document.getElementById(id).style.display = "none";
             });
             document.getElementById("copy-btn").style.display = "none";
+            document.getElementById("table-btn").style.display = "none";
             document.getElementById("copy-ai-btn").style.display = "none";
             document.getElementById("tabs").style.display = "none";
             document.getElementById("ai-section").style.display = "none";
+            document.getElementById("chat-section").style.display = "none";
+            document.getElementById("table-section").style.display = "none";
+            aiResultText = '';
+            ocrText = '';
+            tableCSV = '';
+            tableHeaders = [];
+            tableData = [];
         }
 
         function showTab(tab, clickedBtn) {
@@ -249,14 +414,17 @@
             document.getElementById("trocr-box").style.display = tab === 'trocr' ? 'block' : 'none';
             document.getElementById("tesseract-box").style.display = tab === 'tesseract' ? 'block' : 'none';
             document.getElementById("easyocr-box").style.display = tab === 'easyocr' ? 'block' : 'none';
+            document.getElementById("math-box").style.display = tab === 'math' ? 'block' : 'none';
         }
+
+        // ─── MAIN OCR ───
 
         async function extractText() {
             if (!selectedFile) return;
 
             const btn = document.getElementById("extract-btn");
             btn.disabled = true;
-            btn.innerText = "Extracting...";
+            btn.innerHTML = "⏳ Extracting... Please wait";
 
             document.getElementById("best-box").style.display = "block";
             document.getElementById("tabs").style.display = "none";
@@ -273,12 +441,21 @@
                 });
                 const data = await response.json();
 
+                if (data.error) {
+                    document.getElementById("best-text").innerHTML =
+                        `<div class="error-box">❌ ${data.error}</div>`;
+                    btn.disabled = false;
+                    btn.innerHTML = "Extract Text";
+                    return;
+                }
+
+                ocrText = data.text || '';
                 document.getElementById("best-text").innerText = data.text || "No text found";
                 document.getElementById("trocr-text").innerText = data.trocr || "Nothing detected";
                 document.getElementById("tesseract-text").innerText = data.tesseract || "Nothing detected";
                 document.getElementById("easyocr-text").innerText = data.easyocr || "Nothing detected";
+                renderMathOnly("math-text", data.math || "No math detected");
 
-                // Show handwritten or printed badge
                 const badge = document.getElementById("type-badge");
                 if (data.handwritten) {
                     badge.innerText = "✍️ Handwritten detected";
@@ -291,48 +468,376 @@
                 document.getElementById("tabs").style.display = "flex";
                 document.getElementById("copy-btn").style.display = "block";
                 document.getElementById("ai-section").style.display = "block";
+                document.getElementById("chat-section").style.display = "block";
+
+                if (data.table) {
+                    populateTable(data.table);
+                    document.getElementById("table-btn").style.display = "block";
+                    document.getElementById("table-section").style.display = "none";
+                }
 
                 showTab('best', document.querySelector('.tab'));
 
             } catch (error) {
-                document.getElementById("best-text").innerText =
-                    "Error connecting to server. Make sure the API is running.";
+                document.getElementById("best-text").innerHTML = `
+                    <div class="error-box">
+                        ❌ Error connecting to server.<br>
+                        <small>Make sure the API is running: <code>uvicorn app:app --reload</code></small>
+                    </div>`;
             }
 
             btn.disabled = false;
-            btn.innerText = "Extract Text";
+            btn.innerHTML = "Extract Text";
         }
+
+        function toggleTable() {
+            const section = document.getElementById("table-section");
+            const btn = document.getElementById("table-btn");
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                section.scrollIntoView({behavior: 'smooth'});
+                btn.innerHTML = "📊 Hide Table";
+            } else {
+                section.style.display = 'none';
+                btn.innerHTML = "📊 Table Detected — View & Edit";
+            }
+        }
+
+        // ─── EDITABLE TABLE ───
+
+        function populateTable(data) {
+            tableHeaders = [...data.columns];
+            tableData = data.data.map(row =>
+                Array.isArray(row) ? [...row] : Object.values(row)
+            );
+            tableCSV = data.csv;
+            tableColumns = data.columns;
+            renderEditableTable();
+            document.getElementById("table-actions").style.display = "none";
+        }
+
+        function renderEditableTable() {
+            const table = document.getElementById("data-table");
+            let html = '<thead><tr>';
+
+            tableHeaders.forEach((h, hi) => {
+                html += `<th>
+                    <div contenteditable="true"
+                        onblur="updateHeader(this, ${hi})"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                    >${h}</div>
+                </th>`;
+            });
+            html += `<th style="background:#00BCD4; width:35px; border:1px solid #ddd;"></th>`;
+            html += '</tr></thead><tbody>';
+
+            tableData.forEach((row, ri) => {
+                html += `<tr>`;
+                tableHeaders.forEach((h, ci) => {
+                    const val = row[ci] !== undefined ? row[ci] : '';
+                    html += `<td>
+                        <div contenteditable="true"
+                            onblur="updateCell(this, ${ri}, ${ci})"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                            onfocus="this.parentElement.style.background='#fffde7'"
+                            onblur="updateCell(this,${ri},${ci}); this.parentElement.style.background='';"
+                        >${val}</div>
+                    </td>`;
+                });
+                html += `<td style="border:1px solid #ddd; text-align:center; padding:4px;">
+                    <button onclick="deleteRow(${ri})"
+                        style="width:auto; padding:2px 8px; font-size:12px;
+                        background:#F44336; margin:0; border-radius:4px;">✕</button>
+                </td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function updateHeader(el, colIndex) {
+            tableHeaders[colIndex] = el.innerText.trim();
+        }
+
+        function updateCell(el, rowIndex, colIndex) {
+            if (!tableData[rowIndex]) tableData[rowIndex] = [];
+            tableData[rowIndex][colIndex] = el.innerText.trim();
+        }
+
+        function addTableRow() {
+            tableData.push(tableHeaders.map(() => ''));
+            renderEditableTable();
+            setTimeout(() => {
+                const rows = document.querySelectorAll('#data-table tbody tr');
+                if (rows.length > 0) {
+                    const lastRow = rows[rows.length - 1];
+                    const firstCell = lastRow.querySelector('[contenteditable]');
+                    if (firstCell) firstCell.focus();
+                }
+            }, 100);
+        }
+
+        function addTableCol() {
+            tableHeaders.push(`Col${tableHeaders.length + 1}`);
+            tableData = tableData.map(row => [...row, '']);
+            renderEditableTable();
+        }
+
+        function deleteRow(rowIndex) {
+            tableData.splice(rowIndex, 1);
+            renderEditableTable();
+        }
+
+        function confirmTable() {
+            // Rebuild CSV from current state
+            const allRows = [tableHeaders, ...tableData];
+            tableCSV = allRows.map(row =>
+                row.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(',')
+            ).join('\n');
+            tableColumns = [...tableHeaders];
+
+            populateColSelectors(tableHeaders);
+            document.getElementById("table-actions").style.display = "block";
+
+            const btn = document.getElementById("confirm-btn");
+            btn.innerHTML = "✅ Confirmed!";
+            btn.style.background = "#388E3C";
+            setTimeout(() => {
+                btn.innerHTML = "✅ Confirm Table";
+                btn.style.background = "#4CAF50";
+            }, 2000);
+        }
+
+        function populateColSelectors(headers) {
+            const xCol = document.getElementById("x-col");
+            const yCol = document.getElementById("y-col");
+            if (!xCol || !yCol) return;
+            xCol.innerHTML = '';
+            yCol.innerHTML = '';
+            headers.forEach(col => {
+                xCol.innerHTML += `<option value="${col}">${col}</option>`;
+                yCol.innerHTML += `<option value="${col}">${col}</option>`;
+            });
+            if (headers.length > 1) yCol.selectedIndex = 1;
+        }
+
+        function showChartOptions() {
+            const opts = document.getElementById("chart-options");
+            opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function generateChart() {
+            const chartType = document.getElementById("chart-type").value;
+            const xCol = document.getElementById("x-col").value;
+            const yCol = document.getElementById("y-col").value;
+
+            const formData = new FormData();
+            formData.append("csv_data", tableCSV);
+            formData.append("chart_type", chartType);
+            formData.append("x_col", xCol);
+            formData.append("y_col", yCol);
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/generate-chart", {
+                    method: "POST", body: formData
+                });
+                const data = await response.json();
+                if (data.chart) {
+                    document.getElementById("chart-img").src = "data:image/png;base64," + data.chart;
+                    document.getElementById("chart-display").style.display = "block";
+                } else {
+                    alert("Could not generate chart: " + (data.error || "unknown"));
+                }
+            } catch (error) {
+                alert("Error generating chart.");
+            }
+        }
+
+        function downloadChart() {
+            const img = document.getElementById("chart-img");
+            const a = document.createElement('a');
+            a.href = img.src;
+            a.download = 'chart.png';
+            a.click();
+        }
+
+        async function exportExcel() {
+            const formData = new FormData();
+            formData.append("csv_data", tableCSV);
+            try {
+                const response = await fetch("http://127.0.0.1:8000/export-excel", {
+                    method: "POST", body: formData
+                });
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'extracted_data.xlsx';
+                a.click();
+            } catch (error) {
+                alert("Export failed.");
+            }
+        }
+
+        // ─── AI PROCESSING ───
 
         async function processWithAI(mode) {
             const text = document.getElementById(currentTab + "-text").innerText;
-            if (!text || text === "No text found" || text === "Nothing detected") {
+            if (!text || text === "No text found" || text === "Nothing detected"
+                || text === "No math detected") {
                 alert("No text found in selected tab. Try another OCR engine!");
                 return;
             }
 
             const aiBox = document.getElementById("ai-result-box");
             const aiText = document.getElementById("ai-result-text");
-
             aiBox.style.display = "block";
-            aiText.innerText = "Processing with Gemini AI...";
+            aiText.innerHTML = '<span class="loading">⏳ Processing with Groq AI...</span>';
             document.getElementById("copy-ai-btn").style.display = "none";
 
             const formData = new FormData();
             formData.append("text", text);
             formData.append("mode", mode);
+            const lang = document.getElementById("translate-lang");
+            formData.append("language", lang ? lang.value : "Hindi");
 
             try {
                 const response = await fetch("http://127.0.0.1:8000/ai-process", {
-                    method: "POST",
-                    body: formData
+                    method: "POST", body: formData
                 });
                 const data = await response.json();
-                aiText.innerText = data.result;
+                renderMathAndMarkdown("ai-result-text", data.result);
+                aiResultText = data.result;
                 document.getElementById("copy-ai-btn").style.display = "block";
             } catch (error) {
-                aiText.innerText = "Error connecting to AI. Check your API key.";
+                aiText.innerHTML = `<div class="error-box">❌ Error connecting to AI.</div>`;
             }
         }
+
+        // ─── SMART CHAT ───
+
+        async function sendChat() {
+            const input = document.getElementById("chat-input");
+            const message = input.value.trim();
+            if (!message) return;
+
+            document.getElementById("chat-placeholder").style.display = "none";
+            addChatMessage("user", message);
+            input.value = "";
+
+            const loadingId = addChatMessage("assistant", "⏳ Thinking...");
+
+            const formData = new FormData();
+            formData.append("message", message);
+            formData.append("session_id", sessionId);
+            formData.append("ocr_text", ocrText + (aiResultText ? "\n\nAI Solution:\n" + aiResultText : ""));
+            formData.append("table_csv", tableCSV);
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/chat", {
+                    method: "POST", body: formData
+                });
+                const data = await response.json();
+                renderSmartResponse(loadingId, data);
+            } catch (error) {
+                updateChatRaw(loadingId, "❌ Error connecting to server.");
+            }
+
+            const chatMessages = document.getElementById("chat-messages");
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function renderSmartResponse(id, data) {
+            const msg = document.getElementById(id);
+            if (!msg) return;
+            const el = msg.querySelector("div:last-child");
+            el.innerHTML = '';
+
+            if (data.text) {
+                const textDiv = document.createElement('div');
+                textDiv.innerHTML = marked.parse(data.text);
+                renderMathInElement(textDiv, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+                el.appendChild(textDiv);
+            }
+
+            if (data.table && data.table.headers && data.table.rows) {
+                const tableDiv = document.createElement('div');
+                tableDiv.innerHTML = buildTableHTML(data.table.headers, data.table.rows);
+                el.appendChild(tableDiv);
+            }
+
+            if (data.chart_image) {
+                const img = document.createElement('img');
+                img.src = "data:image/png;base64," + data.chart_image;
+                img.className = "chat-chart";
+
+                const dlBtn = document.createElement('button');
+                dlBtn.innerHTML = "📥 Download Chart";
+                dlBtn.style.cssText = "width:auto; padding:6px 12px; font-size:13px; background:#607D8B; margin-top:5px;";
+                dlBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = img.src;
+                    a.download = 'chart.png';
+                    a.click();
+                };
+
+                el.appendChild(img);
+                el.appendChild(dlBtn);
+            }
+
+            if (data.chart_error) {
+                const errDiv = document.createElement('div');
+                errDiv.className = 'error-box';
+                errDiv.innerText = "⚠️ Could not generate chart: " + data.chart_error;
+                el.appendChild(errDiv);
+            }
+
+            document.getElementById("chat-messages").scrollTop =
+                document.getElementById("chat-messages").scrollHeight;
+        }
+
+        function addChatMessage(role, text) {
+            const chatMessages = document.getElementById("chat-messages");
+            const id = "msg_" + Date.now() + Math.random();
+            const label = role === "user" ? "You" : "AI";
+            const cssClass = role === "user" ? "chat-user" : "chat-assistant";
+            const div = document.createElement("div");
+            div.className = "chat-message";
+            div.id = id;
+            div.innerHTML = `
+                <div class="chat-label">${label}</div>
+                <div class="${cssClass}">${text}</div>
+            `;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return id;
+        }
+
+        function updateChatRaw(id, text) {
+            const msg = document.getElementById(id);
+            if (msg) msg.querySelector("div:last-child").innerText = text;
+        }
+
+        async function clearChat() {
+            const formData = new FormData();
+            formData.append("session_id", sessionId);
+            await fetch("http://127.0.0.1:8000/clear-chat", { method: "POST", body: formData });
+            document.getElementById("chat-messages").innerHTML = `
+                <div id="chat-placeholder" style="color:#999; text-align:center; margin-top:80px;">
+                    Ask anything — "show mean", "draw a bar chart", "explain step 3", "translate to Hindi"...
+                </div>`;
+        }
+
+        // ─── COPY ───
 
         function copyText() {
             let text = "";
@@ -340,6 +845,7 @@
             if (currentTab === 'trocr') text = document.getElementById("trocr-text").innerText;
             if (currentTab === 'tesseract') text = document.getElementById("tesseract-text").innerText;
             if (currentTab === 'easyocr') text = document.getElementById("easyocr-text").innerText;
+            if (currentTab === 'math') text = document.getElementById("math-text").innerText;
             navigator.clipboard.writeText(text);
             const btn = document.getElementById("copy-btn");
             btn.innerText = "✅ Copied!";

@@ -10,3 +10,9 @@ python-multipart
 numpy
 groq
 python-dotenv
+slowapi
+img2table
+pandas
+openpyxl
+matplotlib
+pix2text
